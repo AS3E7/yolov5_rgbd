@@ -1,0 +1,90 @@
+# parameters
+nc: 80  # number of classes
+depth_multiple: 1.0  # model depth multiple
+width_multiple: 1.0  # layer channel multiple
+
+# anchors
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32  
+  - [10,13, 16,30, 33,23]  # P3/8,Branch1
+  - [30,61, 62,45, 59,119]  # P4/16,Branch1
+  - [116,90, 156,198, 373,326]  # P5/32,Branch1
+  - [10,13, 16,30, 33,23]  # P3/8,Branch2
+  - [30,61, 62,45, 59,119]  # P4/16,Branch2
+  - [116,90, 156,198, 373,326]  # P5/32,Branch2
+
+# YOLOv5 backbone
+backbone:
+  # [from, number, module, args]
+  [
+    [-1, 1, DataCopy, [1]], # Copy source data
+      
+    [-1, 1, DataBranch, [3, 1]], # --- backbone ---, Depth data
+    [-1, 1, Focus, [32, 3]],  # 0-P1/2
+    [-1, 1, Conv, [128, 3, 2]],  # 1-P2/4
+    [-1, 3, BottleneckCSP, [128]],
+    [-1, 1, Conv, [256, 3, 2]],  # 3-P3/8
+    [-1, 9, BottleneckCSP, [256]],
+    [-1, 1, Conv, [512, 3, 2]],  # 5-P4/16
+    [-1, 9, BottleneckCSP, [512]],
+    [-1, 1, Conv, [1024, 3, 2]],  # 7-P5/32
+    [-1, 1, SPP, [1024, [5, 9, 13]]],
+    [-1, 3, BottleneckCSP, [1024, False]],  # 9
+    [-1, 1, Conv, [512, 1, 1]], # --- head --- 
+    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+    [[-1, 8], 1, Concat, [1]],  # cat backbone P4
+    [-1, 3, BottleneckCSP, [512, False]],  # 13
+    [-1, 1, Conv, [256, 1, 1]],
+    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+    [[-1, 6], 1, Concat, [1]],  # cat backbone P3
+    [-1, 3, BottleneckCSP, [256, False]],  # 17 (P3/8-small)
+    [-1, 1, Conv, [256, 3, 2]],
+    [[-1, 16], 1, Concat, [1]],  # cat head P4
+    [-1, 3, BottleneckCSP, [512, False]],  # 20 (P4/16-medium)
+    [-1, 1, Conv, [512, 3, 2]],
+    [[-1, 12], 1, Concat, [1]],  # cat head P5
+    [-1, 3, BottleneckCSP, [1024, False]],  # 23 (P5/32-large)
+
+    [0, 1, DataBranch, [3, 2]], # --- backbone ---, RGB data, [-5, 1, DataBranch, [3, 2]]
+    [-1, 1, Focus, [32, 3]],  # 0-P1/2
+    [-1, 1, Conv, [128, 3, 2]],  # 1-P2/4
+    [-1, 3, BottleneckCSP, [128]],
+    [-1, 1, Conv, [256, 3, 2]],  # 3-P3/8
+    [-1, 9, BottleneckCSP, [256]],
+    [-1, 1, Conv, [512, 3, 2]],  # 5-P4/16
+    [-1, 9, BottleneckCSP, [512]],
+    [-1, 1, Conv, [1024, 3, 2]],  # 7-P5/32
+    [-1, 1, SPP, [1024, [5, 9, 13]]],
+    [-1, 3, BottleneckCSP, [1024, False]],  # 9
+    [-1, 1, Conv, [512, 1, 1]], # --- head --- 
+    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+    [[-1, 33], 1, Concat, [1]],  # cat backbone P4
+    [-1, 3, BottleneckCSP, [512, False]],  # 13
+    [-1, 1, Conv, [256, 1, 1]],
+    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+    [[-1, 31], 1, Concat, [1]],  # cat backbone P3
+    [-1, 3, BottleneckCSP, [256, False]],  # 17 (P3/8-small)
+    [-1, 1, Conv, [256, 3, 2]],
+    [[-1, 41], 1, Concat, [1]],  # cat head P4
+    [-1, 3, BottleneckCSP, [512, False]],  # 20 (P4/16-medium)
+    [-1, 1, Conv, [512, 3, 2]],
+    [[-1, 37], 1, Concat, [1]],  # cat head P5
+    [-1, 3, BottleneckCSP, [1024, False]],  # 23 (P5/32-large)
+    
+  ]
+
+# YOLOv5 PANet head
+head:
+  [
+   
+   [[19, 44], 1, Concat, [1]],
+   [[22, 47], 1, Concat, [1]],
+   [[25, 50], 1, Concat, [1]],
+   
+   [[51, 52, 53, 19, 22, 25, 44, 47, 50], 1, Detect, [nc, anchors]],  # Detect(P3, P4, P5, Branch1_1,Branch1_2,Branch1_3, Branch2_1,Branch2_2,Branch2_3)
+   
+  ]
+
+
